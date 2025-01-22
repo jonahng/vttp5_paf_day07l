@@ -18,7 +18,9 @@ public class Vttp5PafDay07lApplication implements CommandLineRunner{
 
 	@Override
 	public void run(String... args){
-		taskRepo.insertTask();
+		//taskRepo.insertTask();
+		//taskRepo.update();
+		taskRepo.searchComments("extremely", "okay");
 	}
 
 }
