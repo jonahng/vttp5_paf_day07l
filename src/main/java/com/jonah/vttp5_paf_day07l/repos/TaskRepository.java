@@ -1,6 +1,10 @@
 package com.jonah.vttp5_paf_day07l.repos;
 
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.io.StringReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -9,6 +13,7 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.TextIndexDefinition;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.TextCriteria;
@@ -119,7 +124,96 @@ public class TaskRepository {
     .forEach(d -> {System.out.println("THE FINDING IS" + d.toJson());
     });
 
+
+    //delete comments collection
+    //create comments collection
+    // write json into comments collection
+    //modify C-id to _id when writing it in
+    //create a text index
+
  }
 
+ public String getCollectionNameFromFilePath(String filePath){
+    String collectionName = filePath.substring(filePath.lastIndexOf("\\")+1, filePath.lastIndexOf("."));
+    //System.out.println("THE COLLECTION NAME IS: " + collectionName);
+    return collectionName;
+ }
+
+
+ public void deleteCollection(String collectionName){
+        template.dropCollection(collectionName);
+ }
+
+ public void createCollection(String collectionName){
+    template.createCollection(collectionName);
+ }
+
+public void writeFileToCollection(String filePath){
+
+
+    InputStream filInputStream = null;
+
+        try {
+            filInputStream = Files.newInputStream(Paths.get(filePath));
+            
+        } catch (Exception e) {
+            // TODO: handle exception
+        }
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(filInputStream);
+        JsonReader JsonReader = Json.createReader(bufferedInputStream);
+        JsonArray commentJsonArray = JsonReader.readArray();
+        //System.out.println("THE JSON READ IS " + commentJsonArray);
+        //it reads the json file
+        String collectionName = getCollectionNameFromFilePath(filePath);
+
+        for(int i =0; i<commentJsonArray.size(); i++){
+            JsonObject jsonObject = commentJsonArray.getJsonObject(i);
+            //jsonObject.put("_id", jsonObject.get("c_id"));
+            //JsonObject updateIdObject = jsonObject;
+            //jsonObject.put("_id", Json.createValue(jsonObject.getString("c_id")));
+            //updateIdObject.put("_id", jsonObject.get("c_id"));
+            JsonObject updatedIdObject = Json.createObjectBuilder(jsonObject).add("_id",jsonObject.getString("c_id")).build();
+
+            String jsonStr = updatedIdObject.toString(); //must convert the jsonObject to string, then use document.parse to make it a Document.
+            System.out.println(jsonStr);
+            Document docToInsert = Document.parse(jsonStr);
+
+             Document result = template.insert(docToInsert, collectionName);
+
+
+/*              Criteria criteria = Criteria.where("_id").gte(0);
+             Query query = Query.query(criteria);
+             Update updateOps = new Update().set("_id", jsonObject.getString("c_id"));
+             UpdateResult updateResult = template.updateFirst(query, updateOps, Document.class, collectionName);
+          */
+
+
+
+
+
+        }
+        System.out.println("Inserted JsonArray into the collection");
+
+}
+
+
+public void convertId(){
+
+    Criteria criteria = Criteria.where("_id").gte(0);
+    Query query = Query.query(criteria);
+    Update updateOps = new Update().set("time", "2pm").push("friends", "betty");
+
+    UpdateResult result = template.updateFirst(query, updateOps, Document.class, "tasks");
+
+    System.out.println("Matched " + result.getMatchedCount());
+
+}
+
+public void createTextIndex(String collectionName){
+    TextIndexDefinition tIndexDef = new TextIndexDefinition.TextIndexDefinitionBuilder().onField("c_text").build();
+
+    template.indexOps(collectionName).ensureIndex(tIndexDef);
+    System.out.println("INDEX FOR C text created");
+}
 
 }
